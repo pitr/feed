@@ -1,0 +1,17 @@
+From: {{.From}}
+To: {{.To}}
+Subject: {{.Subject}}
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+Your updates
+{{range .Updates}}
+{{.Title}} {{.URL}}
+{{end}}
+
+{{if .BadFeeds}}
+The following feeds could not be updated:
+{{range .BadFeeds}}
+{{.}}{{end}}{{end}}
+Have a good day!
