@@ -154,6 +154,16 @@ func processFeed(feed, date string, updates *Updates) {
 		path := line[:split]
 		name := strings.TrimLeft(line[split:], spacetab)
 
+		if strings.HasPrefix(name, date) {
+			name = strings.TrimSpace(name[len(date):])
+		}
+		if strings.HasPrefix(name, ": ") {
+			name = strings.TrimSpace(name[2:])
+		}
+		if strings.HasPrefix(name, "- ") {
+			name = strings.TrimSpace(name[2:])
+		}
+
 		u, err := url.Parse(path)
 		if err != nil {
 			fmt.Printf("error parsing url on line %q of feed %q: %s\n", path, feed, err)

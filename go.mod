@@ -1,6 +1,6 @@
 module github.com/pitr/feed
 
-go 1.15
+go 1.16
 
 require (
 	git.sr.ht/~adnano/go-gemini v0.1.13
