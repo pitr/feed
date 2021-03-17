@@ -20,13 +20,13 @@ test:
 	go test
 
 deploy: build.linux
-	rsync build/linux/$(BINARY) ec2-user@glv:$(BINARY)-next
-	ssh ec2-user@glv 'cp $(BINARY) $(BINARY)-old'
-	ssh ec2-user@glv 'mv $(BINARY)-next $(BINARY)'
+	rsync build/linux/$(BINARY) ec2-user@glv:feed/$(BINARY)-next
+	ssh ec2-user@glv 'cp feed/$(BINARY) feed/$(BINARY)-old'
+	ssh ec2-user@glv 'mv feed/$(BINARY)-next feed/$(BINARY)'
 	ssh ec2-user@glv 'sudo systemctl restart $(BINARY)'
 
 rollback:
-	ssh ec2-user@glv 'mv $(BINARY)-old $(BINARY)'
+	ssh ec2-user@glv 'mv feed/$(BINARY)-old feed/$(BINARY)'
 	ssh ec2-user@glv 'sudo systemctl restart $(BINARY)'
 
 build.local: build/$(BINARY)
