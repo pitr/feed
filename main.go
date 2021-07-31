@@ -1,8 +1,14 @@
 package main
 
+import "github.com/pitr/feed/db"
+
+var D *db.Conn
+
 func main() {
-	go runSender()
-	// fetchAndSend()
+	D = db.NewConn()
+
+	// go runSender()
+	fetchAndSend()
 
 	runServer("127.0.0.1:7777")
 }

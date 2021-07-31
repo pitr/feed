@@ -13,11 +13,11 @@ clean:
 
 run: build.local
 	SMTP_PORT=587 \
+	SMTP_USERNAME=$U \
+	SMTP_PASSWORD=$P \
+	SMTP_HOST=email-smtp.eu-west-1.amazonaws.com \
 	SMTP_FROM=news@glv.one \
 	./build/$(BINARY)
-
-test:
-	go test
 
 deploy: build.linux
 	rsync build/linux/$(BINARY) ec2-user@glv:feed/$(BINARY)-next
@@ -33,7 +33,4 @@ build.local: build/$(BINARY)
 build.linux: build/linux/$(BINARY)
 
 build/$(BINARY): $(SOURCES) $(STATICS)
-	CGO_ENABLED=0 go build -o build/$(BINARY) $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" .
-
-build/linux/$(BINARY): $(SOURCES) $(STATICS)
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build $(BUILD_FLAGS) -o build/linux/$(BINARY) -ldflags "$(LDFLAGS)" .
+	CGO_ENABLED=1 go build -o build/$(BINARY) $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" .

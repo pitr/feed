@@ -32,9 +32,14 @@ var (
 )
 
 type Updates struct {
-	Updates           []Update
-	Feeds, BadFeeds   []string
+	Feeds             []Feed
+	BadFeeds          []string
 	From, To, Subject string
+}
+
+type Feed struct {
+	URL     string
+	Updates []Update
 }
 
 type Update struct {
@@ -51,52 +56,40 @@ func runSender() {
 
 func fetchAndSend() {
 	var (
-		yesterday = time.Now().UTC().Add(-24 * time.Hour).Format("2006-01-02")
-		updates   = &Updates{}
-		feeds     = getFeeds()
+		yesterday  = time.Now().UTC().Add(-24 * time.Hour).Format("2006-01-02")
+		users, err = D.GetUsers()
 	)
 
-	fmt.Printf("processing feeds, looking for: %s\n", yesterday)
-
-	for _, feed := range feeds {
-		processFeed(feed, yesterday, updates)
-	}
-
-	if len(updates.Updates) == 0 {
-		fmt.Println("no updates today, skipping")
+	if err != nil {
+		fmt.Printf("[ERROR] could not get users/feeds: %s\n", err)
 		return
 	}
 
-	sendEmail(yesterday, updates)
+	fmt.Printf("processing feeds, looking for: %s\n", yesterday)
+
+	for _, u := range users {
+		fmt.Printf("Processing feeds for %s\n", u.Email)
+
+		updates := &Updates{}
+
+		for _, feed := range u.Feeds {
+			processFeed(feed.URL, yesterday, updates)
+		}
+
+		if len(updates.Feeds) == 0 && len(updates.BadFeeds) == 0 {
+			fmt.Println("no updates today, skipping")
+			return
+		}
+
+		sendEmail(u.Email, yesterday, updates)
+	}
 	fmt.Println("done")
-}
-
-func getFeeds() []string {
-	feeds := []string{}
-
-	f, err := os.Open("feeds.txt")
-	if err != nil {
-		fmt.Printf("[ERROR] could not read feed file: %s\n", err)
-		return feeds
-	}
-	defer f.Close()
-
-	lines := bufio.NewScanner(f)
-	for lines.Scan() {
-		feeds = append(feeds, lines.Text())
-	}
-	if err = lines.Err(); err != nil {
-		fmt.Printf("[ERROR] could not parse feed file: %s\n", err)
-		return feeds
-	}
-	fmt.Printf("processing %d feeds\n", len(feeds))
-	return feeds
 }
 
 func processFeed(feed, date string, updates *Updates) {
 	fmt.Printf("trying feed %q\n", feed)
 
-	found := false
+	f := Feed{URL: feed}
 
 	switch {
 	case strings.HasPrefix(feed, "gemini://"): // expected
@@ -156,6 +149,8 @@ func processFeed(feed, date string, updates *Updates) {
 
 		if strings.HasPrefix(name, date) {
 			name = strings.TrimSpace(name[len(date):])
+		} else {
+			continue
 		}
 		if strings.HasPrefix(name, ": ") {
 			name = strings.TrimSpace(name[2:])
@@ -171,8 +166,7 @@ func processFeed(feed, date string, updates *Updates) {
 		}
 
 		addr := base.ResolveReference(u).String()
-		updates.Updates = append(updates.Updates, Update{URL: addr, Title: name})
-		found = true
+		f.Updates = append(f.Updates, Update{URL: addr, Title: name})
 	}
 
 	if err := lines.Err(); err != nil {
@@ -181,12 +175,12 @@ func processFeed(feed, date string, updates *Updates) {
 		return
 	}
 
-	if found {
-		updates.Feeds = append(updates.Feeds, feed)
+	if len(f.Updates) > 0 {
+		updates.Feeds = append(updates.Feeds, f)
 	}
 }
 
-func sendEmail(date string, updates *Updates) {
+func sendEmail(email, date string, updates *Updates) {
 	var (
 		buf  = &bytes.Buffer{}
 		host = os.Getenv("SMTP_HOST")
@@ -196,18 +190,19 @@ func sendEmail(date string, updates *Updates) {
 	)
 
 	updates.From = os.Getenv("SMTP_FROM")
-	updates.To = os.Getenv("SMTP_TO")
+	updates.To = email
 	updates.Subject = fmt.Sprintf("Daily Gemini News for %s", date)
 
-	fmt.Printf("Sending %d updates from %d feeds (and %d bad feeds)\n", len(updates.Updates), len(updates.Feeds), len(updates.BadFeeds))
+	fmt.Printf("Sending updates from %d feeds (and %d bad feeds)\n", len(updates.Feeds), len(updates.BadFeeds))
 	err := emailT.Execute(buf, updates)
 	if err != nil {
-		panic(err)
+		fmt.Printf("error rendering email: %s\n", err)
+		return
 	}
 
 	err = smtp.SendMail(addr, smtp.PlainAuth("", user, pass, host), updates.From, []string{updates.To}, buf.Bytes())
 	if err != nil {
-		panic(err)
+		fmt.Printf("error sending email: %s\n", err)
 	}
 }
 

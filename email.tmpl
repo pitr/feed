@@ -6,8 +6,11 @@ Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
 
 Your updates
+{{range .Feeds}}
+# {{.URL}}
 {{range .Updates}}
-{{.Title}} {{.URL}}
+{{.URL}} {{.Title}}
+{{end}}
 {{end}}
 
 {{if .BadFeeds}}

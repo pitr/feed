@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 
 	"github.com/gin-gonic/gin"
 )
@@ -51,25 +50,18 @@ func runServer(addr string) {
 
 		fmt.Printf(":::: sub user '%s'/'%s' to '%s'\n", msg.Mail.Source, msg.Mail.CommonHeaders.ReturnPath, msg.Mail.CommonHeaders.Subject)
 
-		err = addFeed(msg.Mail.CommonHeaders.Subject)
+		u, err := D.FindOrCreateUser(msg.Mail.Source)
 		if err != nil {
-			fmt.Printf("could not save feed: %s\n", err)
+			fmt.Printf("could not find/create user: %s\n", err)
+			return
+		}
+
+		err = D.AddFeed(u, msg.Mail.CommonHeaders.Subject)
+		if err != nil {
+			fmt.Printf("could not add feed: %s\n", err)
 			return
 		}
 	})
 	println("starting server on", addr)
 	panic(r.Run(addr))
-}
-
-func addFeed(feed string) error {
-	f, err := os.OpenFile("feeds.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	_, err = f.WriteString(feed + "\n")
-	if err != nil {
-		return err
-	}
-	return nil
 }
